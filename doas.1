@@ -21,7 +21,7 @@
 .Nd execute commands as another user
 .Sh SYNOPSIS
 .Nm doas
-.Op Fl Lns
+.Op Fl Llmns
 .Op Fl a Ar style
 .Op Fl C Ar config
 .Op Fl u Ar user
@@ -36,12 +36,15 @@ The
 argument is mandatory unless
 .Fl C ,
 .Fl L ,
+.Fl l ,
 or
 .Fl s
 is specified.
 .Pp
 The user will be required to authenticate by entering their password,
-unless configured otherwise.
+unless configured otherwise or when using the
+.Fl l
+option.
 .Pp
 By default, a new environment is created.
 The variables
@@ -97,6 +100,15 @@ No command is executed.
 Clear any persisted authentications from previous invocations,
 then immediately exit.
 No command is executed.
+.It Fl l
+List allowed commands for the invoking user.  The user will not be
+challenged for a password.  Reveals
+.Sq command as 
+user commands when combined with
+.Fl u 
+option.
+.It Fl m
+Show Matched permitted rule
 .It Fl n
 Non interactive mode, fail if the matching rule doesn't have the
 .Ic nopass
@@ -126,6 +138,8 @@ The user attempted to run a command which is not permitted.
 The password was incorrect.
 .It
 The specified command was not found or is not executable.
+.It
+The list option returned no allowed commands
 .El
 .Sh SEE ALSO
 .Xr su 1 ,

@@ -39,7 +39,7 @@
 static void __dead
 usage(void)
 {
-	fprintf(stderr, "usage: doas [-Lns] [-a style] [-C config] [-u user]"
+	fprintf(stderr, "usage: doas [-Llmns] [-a style] [-C config] [-u user]"
 	    " command [arg ...]\n");
 	exit(1);
 }
@@ -114,10 +114,10 @@ match(uid_t uid, gid_t *groups, int ngroups, uid_t target, const char *cmd,
 	}
 	if (r->target && uidcheck(r->target, target) != 0)
 		return 0;
-	if (r->cmd) {
+	if (r->cmd && cmd != NULL) {
 		if (strcmp(r->cmd, cmd))
 			return 0;
-		if (r->cmdargs) {
+		if (r->cmdargs && r->cmdargs != NULL) {
 			/* if arguments were given, they should match explicitly */
 			for (i = 0; r->cmdargs[i]; i++) {
 				if (!cmdargs[i])
@@ -302,6 +302,98 @@ done:
 	return (unveils);
 }
 
+
+static void
+printrule(const struct rule *rule) {
+	int i;
+	int group = 0;
+
+	if (rule->ident[0] == ':') 
+		group = 1;
+	
+	if(rule->action == PERMIT)
+		printf("  permit");
+	else
+		printf("    deny");
+
+	if(group) {
+		printf(" group: %s", rule->ident + 1);
+	} else {
+		printf(" user: %s", rule->ident);
+	}
+
+	if (rule->target) 
+		printf(" (as %s)", rule->target);
+	else 
+		printf(" (as root)");
+
+	if (rule->cmd) {
+		printf(" command: %s", rule->cmd);
+		if(rule->cmdargs)
+			for(i = 0; rule->cmdargs[i] != NULL; i++)
+				printf(" %s", rule->cmdargs[i]);
+	} else
+		printf(" ALL commands");
+
+	if(rule->options || rule->envlist) {
+		printf(" [");
+
+		if (rule->options) {
+			if (rule->options & NOPASS)
+				printf(" nopass");
+
+			if (rule->options & KEEPENV)
+				printf(" keepenv");
+
+			if (rule->options & PERSIST)
+				printf(" persist");
+
+			if (rule->options & NOLOG)
+				printf(" nolog");
+		}
+
+		if (rule->envlist)
+			printf(" setenv");
+
+		printf(" ]");
+	}
+
+	if(rule->envlist) {
+		printf(" {");
+		for(i = 0; rule->envlist[i] != NULL; i++)
+			printf(" %s", rule->envlist[i]);
+		printf(" }");
+	}
+	printf("\n");
+}
+
+static void __dead
+listrules(struct passwd *pw, gid_t *groups,int ngroups, uid_t target)
+{
+	int i;
+	int found = 0;
+
+	if (pledge("stdio rpath", NULL) == -1)
+		err(1, "pledge");
+
+	for (i = 0; i < nrules; i++) {
+		struct rule *r = rules[i];
+		if (match(pw->pw_uid, groups, ngroups, target, NULL, NULL, r)) {
+			found++;
+			if(found == 1)
+				printf("Commands for user %s (%d):\n", pw->pw_name, pw->pw_uid);
+		  
+			printrule(r);
+		}
+	}
+
+	if (!found) {
+		printf("No allowed commands for user %s (%d)\n", pw->pw_name, pw->pw_uid);
+		exit(1);
+	}
+	exit(0);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -323,6 +415,8 @@ main(int argc, char **argv)
 	int ngroups;
 	int i, ch, rv;
 	int sflag = 0;
+	int lflag = 0;
+	int mflag = 0;
 	int nflag = 0;
 	char cwdpath[PATH_MAX];
 	const char *cwd;
@@ -335,13 +429,16 @@ main(int argc, char **argv)
 
 	uid = getuid();
 
-	while ((ch = getopt(argc, argv, "a:C:Lnsu:")) != -1) {
+	while ((ch = getopt(argc, argv, "a:C:Llmnsu:")) != -1) {
 		switch (ch) {
 		case 'a':
 			login_style = optarg;
 			break;
 		case 'C':
 			confpath = optarg;
+			break;
+		case 'l':
+			lflag = 1;
 			break;
 		case 'L':
 			i = open("/dev/tty", O_RDWR);
@@ -351,6 +448,9 @@ main(int argc, char **argv)
 		case 'u':
 			if (parseuid(optarg, &target) != 0)
 				errx(1, "unknown user");
+			break;
+		case 'm':
+			mflag = 1;
 			break;
 		case 'n':
 			nflag = 1;
@@ -369,7 +469,8 @@ main(int argc, char **argv)
 	if (confpath) {
 		if (sflag)
 			usage();
-	} else if ((!sflag && !argc) || (sflag && argc))
+	} else if ((!sflag && !argc && !lflag) || (sflag && argc) || (lflag && argc) 
+			|| (sflag && lflag))
 		usage();
 
 	rv = getpwuid_r(uid, &mypwstore, mypwbuf, sizeof(mypwbuf), &mypw);
@@ -381,6 +482,7 @@ main(int argc, char **argv)
 	if (ngroups == -1)
 		err(1, "can't get groups");
 	groups[ngroups++] = getgid();
+
 
 	if (sflag) {
 		sh = getenv("SHELL");
@@ -405,6 +507,9 @@ main(int argc, char **argv)
 
 	parseconfig("/etc/doas.conf", 1);
 
+	if(lflag)
+  		listrules(mypw, groups, ngroups, target);
+
 	/* cmdline is used only for logging, no need to abort on truncate */
 	(void)strlcpy(cmdline, argv[0], sizeof(cmdline));
 	for (i = 1; i < argc; i++) {
@@ -422,6 +527,8 @@ main(int argc, char **argv)
 		    "command not permitted for %s: %s", mypw->pw_name, cmdline);
 		errc(1, EPERM, NULL);
 	}
+	if(mflag)
+		printrule(rule);
 
 	if (!(rule->options & NOPASS)) {
 		if (nflag)
