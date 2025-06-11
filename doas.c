@@ -368,23 +368,32 @@ printrule(const struct rule *rule) {
 }
 
 static void __dead
-listrules(struct passwd *pw, gid_t *groups,int ngroups, uid_t target)
+listrules(struct passwd *pw, gid_t *groups,int ngroups)
 {
 	int i;
 	int found = 0;
+	uid_t targid;
 
 	if (pledge("stdio rpath", NULL) == -1)
 		err(1, "pledge");
 
 	for (i = 0; i < nrules; i++) {
 		struct rule *r = rules[i];
-		if (match(pw->pw_uid, groups, ngroups, target, NULL, NULL, r)) {
+		targid = 0;
+		if(r->target) {
+			if(parseuid(r->target, &targid) != 0) {
+				warn("target user %s not found", r->target);
+				continue;
+			}
+		} 
+
+		if (match(pw->pw_uid, groups, ngroups, targid, NULL, NULL, r)) {
 			found++;
 			if(found == 1)
 				printf("Commands for user %s (%d):\n", pw->pw_name, pw->pw_uid);
 		  
 			printrule(r);
-		}
+		} 
 	}
 
 	if (!found) {
@@ -507,8 +516,8 @@ main(int argc, char **argv)
 
 	parseconfig("/etc/doas.conf", 1);
 
-	if(lflag)
-  		listrules(mypw, groups, ngroups, target);
+	if(lflag) 
+  		listrules(mypw, groups, ngroups);
 
 	/* cmdline is used only for logging, no need to abort on truncate */
 	(void)strlcpy(cmdline, argv[0], sizeof(cmdline));
