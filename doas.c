@@ -304,64 +304,64 @@ done:
 
 
 static void
-printrule(const struct rule *rule) {
+printrule(const struct rule *r) {
 	int i;
 	int group = 0;
 
-	if (rule->ident[0] == ':') 
+	if (r->ident[0] == ':') 
 		group = 1;
 	
-	if(rule->action == PERMIT)
+	if(r->action == PERMIT)
 		printf("  permit");
 	else
 		printf("    deny");
 
 	if(group) {
-		printf(" group: %s", rule->ident + 1);
+		printf(" group: %s", r->ident + 1);
 	} else {
-		printf(" user: %s", rule->ident);
+		printf(" user: %s", r->ident);
 	}
 
-	if (rule->target) 
-		printf(" (as %s)", rule->target);
+	if (r->target) 
+		printf(" (as %s)", r->target);
 	else 
 		printf(" (as root)");
 
-	if (rule->cmd) {
-		printf(" command: %s", rule->cmd);
-		if(rule->cmdargs)
-			for(i = 0; rule->cmdargs[i] != NULL; i++)
-				printf(" %s", rule->cmdargs[i]);
+	if (r->cmd) {
+		printf(" command: %s", r->cmd);
+		if(r->cmdargs)
+			for(i = 0; r->cmdargs[i] != NULL; i++)
+				printf(" %s", r->cmdargs[i]);
 	} else
 		printf(" ALL commands");
 
-	if(rule->options || rule->envlist) {
+	if(r->options || r->envlist) {
 		printf(" [");
 
-		if (rule->options) {
-			if (rule->options & NOPASS)
+		if (r->options) {
+			if (r->options & NOPASS)
 				printf(" nopass");
 
-			if (rule->options & KEEPENV)
+			if (r->options & KEEPENV)
 				printf(" keepenv");
 
-			if (rule->options & PERSIST)
+			if (r->options & PERSIST)
 				printf(" persist");
 
-			if (rule->options & NOLOG)
+			if (r->options & NOLOG)
 				printf(" nolog");
 		}
 
-		if (rule->envlist)
+		if (r->envlist)
 			printf(" setenv");
 
 		printf(" ]");
 	}
 
-	if(rule->envlist) {
+	if(r->envlist) {
 		printf(" {");
-		for(i = 0; rule->envlist[i] != NULL; i++)
-			printf(" %s", rule->envlist[i]);
+		for(i = 0; r->envlist[i] != NULL; i++)
+			printf(" %s", r->envlist[i]);
 		printf(" }");
 	}
 	printf("\n");
@@ -372,22 +372,22 @@ listrules(struct passwd *pw, gid_t *groups,int ngroups)
 {
 	int i;
 	int found = 0;
-	uid_t targid;
+	uid_t targuid;
 
 	if (pledge("stdio rpath", NULL) == -1)
 		err(1, "pledge");
 
 	for (i = 0; i < nrules; i++) {
 		struct rule *r = rules[i];
-		targid = 0;
+		targuid = 0;
 		if(r->target) {
-			if(parseuid(r->target, &targid) != 0) {
+			if(parseuid(r->target, &targuid) != 0) {
 				warn("target user %s not found", r->target);
 				continue;
 			}
 		} 
 
-		if (match(pw->pw_uid, groups, ngroups, targid, NULL, NULL, r)) {
+		if (match(pw->pw_uid, groups, ngroups, targuid, NULL, NULL, r)) {
 			found++;
 			if(found == 1)
 				printf("Commands for user %s (%d):\n", pw->pw_name, pw->pw_uid);
