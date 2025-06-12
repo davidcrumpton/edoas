@@ -371,7 +371,7 @@ static void __dead
 listrules(struct passwd *pw, gid_t *groups,int ngroups)
 {
 	int i;
-	int found = 0;
+	int matched = 0;
 	uid_t targuid;
 
 	if (pledge("stdio rpath", NULL) == -1)
@@ -388,15 +388,15 @@ listrules(struct passwd *pw, gid_t *groups,int ngroups)
 		} 
 
 		if (match(pw->pw_uid, groups, ngroups, targuid, NULL, NULL, r)) {
-			found++;
-			if(found == 1)
+			matched++;
+			if(matched == 1)
 				printf("Commands for user %s (%d):\n", pw->pw_name, pw->pw_uid);
 		  
 			printrule(r);
 		} 
 	}
 
-	if (!found) {
+	if (!matched) {
 		printf("No allowed commands for user %s (%d)\n", pw->pw_name, pw->pw_uid);
 		exit(1);
 	}
