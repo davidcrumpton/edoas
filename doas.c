@@ -316,11 +316,11 @@ printrule(const struct rule *r) {
 	else
 		printf("    deny");
 
-	if(group) {
+	if(group) 
 		printf(" group: %s", r->ident + 1);
-	} else {
+	else 
 		printf(" user: %s", r->ident);
-	}
+	
 
 	if (r->target) 
 		printf(" (as %s)", r->target);
