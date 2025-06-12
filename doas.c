@@ -306,21 +306,16 @@ done:
 static void
 printrule(const struct rule *r) {
 	int i;
-	int group = 0;
 
-	if (r->ident[0] == ':') 
-		group = 1;
-	
 	if(r->action == PERMIT)
 		printf("  permit");
 	else
 		printf("    deny");
 
-	if(group) 
+	if(r->ident[0] == ':') 
 		printf(" group: %s", r->ident + 1);
 	else 
 		printf(" user: %s", r->ident);
-	
 
 	if (r->target) 
 		printf(" (as %s)", r->target);
