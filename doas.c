@@ -359,7 +359,7 @@ printrule(const struct rule *r) {
 			printf(" %s", r->envlist[i]);
 		printf(" }");
 	}
-	printf("\n");
+	putchar('\n');
 }
 
 static void __dead
@@ -385,14 +385,14 @@ listrules(struct passwd *pw, gid_t *groups,int ngroups)
 		if (match(pw->pw_uid, groups, ngroups, targuid, NULL, NULL, r)) {
 			matched++;
 			if(matched == 1)
-				printf("Commands for user %s (%d):\n", pw->pw_name, pw->pw_uid);
+				printf("commands for user %s (%d):\n", pw->pw_name, pw->pw_uid);
 		  
 			printrule(r);
 		} 
 	}
 
 	if (!matched) {
-		printf("No allowed commands for user %s (%d)\n", pw->pw_name, pw->pw_uid);
+		printf("no allowed commands for user %s (%d)\n", pw->pw_name, pw->pw_uid);
 		exit(1);
 	}
 	exit(0);
