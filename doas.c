@@ -363,7 +363,7 @@ printrule(const struct rule *r) {
 }
 
 static void __dead
-listrules(struct passwd *pw, gid_t *groups,int ngroups)
+listrules(const struct passwd *pw, gid_t *groups,int const ngroups)
 {
 	int i;
 	int matched = 0;
